@@ -23,7 +23,9 @@ def git(*args: str, check: bool = True, deploy_key: bool = False) -> str:
     if deploy_key:
         if not DEPLOY_KEY.exists():
             raise SystemExit(f"Deploy key not found at {DEPLOY_KEY}. See README: 'Deploy key and ruleset'.")
-        env["GIT_SSH_COMMAND"] = f"ssh -i {DEPLOY_KEY} -o IdentitiesOnly=yes"
+        # -F /dev/null + IdentityAgent=none: ignore ~/.ssh/config and the agent, which would
+        # otherwise offer your personal key first (that key gets no ruleset bypass).
+        env["GIT_SSH_COMMAND"] = f"ssh -F /dev/null -i {DEPLOY_KEY} -o IdentitiesOnly=yes -o IdentityAgent=none"
     r = subprocess.run(["git", *args], cwd=ROOT, env=env, text=True, capture_output=True)
     if check and r.returncode != 0:
         raise SystemExit(f"git {' '.join(args)} failed:\n{r.stderr.strip()}")
