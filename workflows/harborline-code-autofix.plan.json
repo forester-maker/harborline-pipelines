@@ -1,0 +1,2334 @@
+{
+  "kind": "ExecutionPlan",
+  "schema_version": "0.2",
+  "inputs": {
+    "flow_run_id": {
+      "schema": {
+        "type": "string",
+        "title": "Failed flow run id",
+        "description": "UUID of the failed production run.",
+        "minLength": 36
+      },
+      "required": true
+    },
+    "flow_name": {
+      "schema": {
+        "type": "string",
+        "title": "Flow name",
+        "description": "Flow of the failed run, e.g. harborline-carrier-invoicing.",
+        "minLength": 1
+      },
+      "required": true
+    }
+  },
+  "nodes": {
+    "inspect_failure": {
+      "kind": "AgentNode",
+      "label": "Read the failed production run",
+      "objective": "A production run of the Harborline carrier-invoicing pipeline failed; its id is in `flow_run_id`. Call `get_flow_run_failure` once with that id, `include_traceback: true` and `max_log_lines: 20`. Copy into `failure_read`: the run id, run name, flow name, deployment, the failed task (first task in state Failed, numeric suffix removed), the exception type, the error message quoted exactly, the `traceback_frames` exactly as returned, and up to 5 key ERROR/WARNING log lines quoted exactly. Set `summary` to one sentence naming the task and the error. If the run can't be read, isn't Failed/Crashed, or isn't a production run, select `blocked` with the reason.",
+      "model": {
+        "connection_id": "cbb49911-e778-57e6-a1a4-1336c56e081a",
+        "id": "claude-haiku-5-5",
+        "effort": "low"
+      },
+      "mcp": {
+        "mcpServers": {
+          "ops": {
+            "type": "connection",
+            "connection_id": "06afcb7c-21a4-7c08-8000-754448c55a71",
+            "tools": [
+              "get_flow_run_failure"
+            ]
+          }
+        }
+      },
+      "inputs": {
+        "flow_run_id": {
+          "schema": {
+            "type": "string"
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        }
+      },
+      "outputs": {
+        "failure_read": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "flow_run_id": {
+                "type": "string"
+              },
+              "flow_run_name": {
+                "type": "string"
+              },
+              "flow_name": {
+                "type": "string"
+              },
+              "deployment": {
+                "type": "string"
+              },
+              "failed_task": {
+                "type": "string"
+              },
+              "exception_type": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "traceback_frames": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "key_log_lines": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "flow_run_id",
+              "flow_run_name",
+              "flow_name",
+              "deployment",
+              "failed_task",
+              "exception_type",
+              "error",
+              "traceback_frames",
+              "key_log_lines",
+              "summary"
+            ]
+          }
+        },
+        "blocked": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason",
+              "summary"
+            ]
+          }
+        }
+      },
+      "orchestration": {
+        "output_selection": "exactly_one",
+        "evaluate_when": "all_required_inputs_produced"
+      }
+    },
+    "read_code": {
+      "kind": "AgentNode",
+      "label": "Read the pipeline code and recent changes",
+      "objective": "Read the pipeline's code on `main` of `forester-maker/harborline-pipelines` so a later step can diagnose a failure in flow `flow_name`. With `get_file_contents` (owner, repo, ref `main`) read exactly these files: `flows/invoicing.py`, `config/rates.yaml`, `tests/test_invoicing.py`, and `data/scans.csv` (keep only its first 6 lines). With `list_commits` (sha `main`, perPage 5) get the latest commits; set `main_head_sha` to the newest. For each of the 3 newest commits call `get_commit` and record sha, message, changed file paths, and a patch excerpt of at most 40 lines. Copy file contents exactly. Do not diagnose. Select `code_read` with `summary` naming the newest commit; select `blocked` if the repo can't be read.",
+      "model": {
+        "connection_id": "cbb49911-e778-57e6-a1a4-1336c56e081a",
+        "id": "claude-sonnet-5-5",
+        "effort": "low"
+      },
+      "mcp": {
+        "mcpServers": {
+          "github": {
+            "type": "connection",
+            "connection_id": "06b0074d-dcf9-73e7-8000-c79acab63b69",
+            "tools": [
+              "get_file_contents",
+              "list_commits",
+              "get_commit"
+            ]
+          }
+        }
+      },
+      "inputs": {
+        "flow_name": {
+          "schema": {
+            "type": "string"
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        }
+      },
+      "outputs": {
+        "code_read": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "main_head_sha": {
+                "type": "string"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "content"
+                  ]
+                }
+              },
+              "recent_commits": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sha": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "files_changed": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "patch_excerpt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "sha",
+                    "message",
+                    "files_changed",
+                    "patch_excerpt"
+                  ]
+                }
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "main_head_sha",
+              "files",
+              "recent_commits",
+              "summary"
+            ]
+          }
+        },
+        "blocked": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason",
+              "summary"
+            ]
+          }
+        }
+      },
+      "orchestration": {
+        "output_selection": "exactly_one",
+        "evaluate_when": "all_required_inputs_produced"
+      }
+    },
+    "diagnose": {
+      "kind": "AgentNode",
+      "label": "Diagnose: is it a code bug, and where?",
+      "objective": "Decide whether the failure in `failure` is caused by the code or files in `code`, using only these two inputs. Match the error and traceback to the file and line, then look through `code.recent_commits` for the commit that introduced the cause. Select `not_a_code_bug` when the cause is operational (timeouts, connection or credential errors, infrastructure, an outage toggle) and no recent commit explains it; say which failure class it looks like. Otherwise select `code_bug`: give the root cause in 1-2 sentences, the file and line, the offending commit sha and message, `fix_location` (`flows` when the correct fix is a code change under `flows/`; `outside_flows` when the correct fix is in config, data or tests \u2014 for example a value that a validation rightly rejects), the intended fix as one or two sentences, the test in `tests/` that covers the behavior (or 'none'), and `main_head_sha` from `code`. Copy the error from `failure` exactly. Select `blocked` if the inputs are empty or contradictory. Set `summary` to one sentence.",
+      "model": {
+        "connection_id": "cbb49911-e778-57e6-a1a4-1336c56e081a",
+        "id": "claude-opus-5-5"
+      },
+      "inputs": {
+        "failure": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "flow_run_id": {
+                "type": "string"
+              },
+              "flow_run_name": {
+                "type": "string"
+              },
+              "flow_name": {
+                "type": "string"
+              },
+              "deployment": {
+                "type": "string"
+              },
+              "failed_task": {
+                "type": "string"
+              },
+              "exception_type": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "traceback_frames": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "key_log_lines": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "flow_run_id",
+              "flow_run_name",
+              "flow_name",
+              "deployment",
+              "failed_task",
+              "exception_type",
+              "error",
+              "traceback_frames",
+              "key_log_lines",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        },
+        "code": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "main_head_sha": {
+                "type": "string"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "content"
+                  ]
+                }
+              },
+              "recent_commits": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sha": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "files_changed": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "patch_excerpt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "sha",
+                    "message",
+                    "files_changed",
+                    "patch_excerpt"
+                  ]
+                }
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "main_head_sha",
+              "files",
+              "recent_commits",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        }
+      },
+      "outputs": {
+        "code_bug": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "flow_run_id": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "root_cause": {
+                "type": "string"
+              },
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer"
+              },
+              "offending_commit_sha": {
+                "type": "string"
+              },
+              "offending_commit_message": {
+                "type": "string"
+              },
+              "fix_location": {
+                "type": "string",
+                "enum": [
+                  "flows",
+                  "outside_flows"
+                ]
+              },
+              "intended_fix": {
+                "type": "string"
+              },
+              "covering_test": {
+                "type": "string"
+              },
+              "main_head_sha": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "flow_run_id",
+              "error",
+              "root_cause",
+              "file",
+              "line",
+              "offending_commit_sha",
+              "offending_commit_message",
+              "fix_location",
+              "intended_fix",
+              "covering_test",
+              "main_head_sha",
+              "summary"
+            ]
+          }
+        },
+        "not_a_code_bug": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "flow_run_id": {
+                "type": "string"
+              },
+              "failure_class": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "flow_run_id",
+              "failure_class",
+              "error",
+              "reason",
+              "summary"
+            ]
+          }
+        },
+        "blocked": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason",
+              "summary"
+            ]
+          }
+        }
+      },
+      "orchestration": {
+        "output_selection": "exactly_one",
+        "evaluate_when": "all_required_inputs_produced"
+      }
+    },
+    "write_fix": {
+      "kind": "AgentNode",
+      "label": "Write the fix on autofix/candidate",
+      "objective": "Fix the bug described in `diagnosis` in `forester-maker/harborline-pipelines`. If `diagnosis.fix_location` is `outside_flows`, or the only correct fix would break any rule below, change nothing and select `fix_outside_allowed_paths` with the reason and the change a person should make. Otherwise: (a) call `create_branch` for `autofix/candidate` from `main`; if it already exists, select `blocked` with 'autofix/candidate already exists; run scripts/reset_code.py'. (b) Read the file with `get_file_contents` (ref `autofix/candidate`). (c) Write the minimal fix. Before pushing, write and run a short Python script that diffs old vs new content with difflib and counts changed lines; it must be 1\u201320. (d) Push it with ONE `push_files` call to branch `autofix/candidate`, with commit message `autofix: <one line>` followed by a blank line, 'Fixes failure in run <flow_run_id>', and 'Introduced by <offending_commit_sha>'. Select `fix_committed` with the branch, base sha (`diagnosis.main_head_sha`), the new commit sha, files changed, the scripted line count, the commit message, and a 1\u20132 sentence change summary. Rules for the fix (hard limits; the next node checks every one): (1) commit ONLY to branch `autofix/candidate`, never to `main`; (2) change ONLY files under `flows/`; never `tests/`, `config/`, `data/`, `prefect.yaml`, `scripts/`, `workflows/` or `.github/`; (3) at most 20 changed lines in total (additions + deletions); (4) exactly one commit; (5) never remove or weaken a validation (`raise`, `assert`, or an `if \u2026 raise` check) \u2014 a value that fails validation is a data/config problem, not a code bug; (6) fix forward with the smallest change; never revert the offending commit.",
+      "model": {
+        "connection_id": "cbb49911-e778-57e6-a1a4-1336c56e081a",
+        "id": "claude-opus-5-5"
+      },
+      "mcp": {
+        "mcpServers": {
+          "github": {
+            "type": "connection",
+            "connection_id": "06b0074d-dcf9-73e7-8000-c79acab63b69",
+            "tools": [
+              "create_branch",
+              "get_file_contents",
+              "push_files"
+            ]
+          }
+        }
+      },
+      "inputs": {
+        "diagnosis": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "flow_run_id": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "root_cause": {
+                "type": "string"
+              },
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer"
+              },
+              "offending_commit_sha": {
+                "type": "string"
+              },
+              "offending_commit_message": {
+                "type": "string"
+              },
+              "fix_location": {
+                "type": "string",
+                "enum": [
+                  "flows",
+                  "outside_flows"
+                ]
+              },
+              "intended_fix": {
+                "type": "string"
+              },
+              "covering_test": {
+                "type": "string"
+              },
+              "main_head_sha": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "flow_run_id",
+              "error",
+              "root_cause",
+              "file",
+              "line",
+              "offending_commit_sha",
+              "offending_commit_message",
+              "fix_location",
+              "intended_fix",
+              "covering_test",
+              "main_head_sha",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        }
+      },
+      "outputs": {
+        "fix_committed": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "branch": {
+                "type": "string"
+              },
+              "base_sha": {
+                "type": "string"
+              },
+              "commit_sha": {
+                "type": "string"
+              },
+              "files_changed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "lines_changed": {
+                "type": "integer"
+              },
+              "commit_message": {
+                "type": "string"
+              },
+              "change_summary": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "branch",
+              "base_sha",
+              "commit_sha",
+              "files_changed",
+              "lines_changed",
+              "commit_message",
+              "change_summary",
+              "summary"
+            ]
+          }
+        },
+        "fix_outside_allowed_paths": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "needed_change": {
+                "type": "string"
+              },
+              "file": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason",
+              "needed_change",
+              "file",
+              "summary"
+            ]
+          }
+        },
+        "blocked": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason",
+              "summary"
+            ]
+          }
+        }
+      },
+      "orchestration": {
+        "output_selection": "exactly_one",
+        "evaluate_when": "all_required_inputs_produced"
+      }
+    },
+    "check_fix": {
+      "kind": "AgentNode",
+      "label": "Independent review of the diff (read-only)",
+      "objective": "Independently check the commit described in `fix` on `forester-maker/harborline-pipelines` against the rules below. Do not trust `fix`; read the source. Call `list_commits` with sha `autofix/candidate` (perPage 3): the newest commit must equal `fix.commit_sha` and the one before it must equal `fix.base_sha` (exactly one new commit). Call `get_commit` for `fix.commit_sha` and write and run a short script over its file list and patch that checks: the diff is not empty; every changed path starts with `flows/`; additions + deletions \u2264 20; no removed line contains `raise` or `assert`. Select `passed` only if every check passes. Its value is exactly the parameters for the candidate run, and nothing else: `month` = '2026-10', `triggered_by` = 'autofix candidate for run <flow_run_id>', `source_commit` = `fix.commit_sha`. Otherwise select `failed`, listing each violation with the numbers you measured. An empty or unreadable diff is a failure. Rules for the fix (hard limits; the next node checks every one): (1) commit ONLY to branch `autofix/candidate`, never to `main`; (2) change ONLY files under `flows/`; never `tests/`, `config/`, `data/`, `prefect.yaml`, `scripts/`, `workflows/` or `.github/`; (3) at most 20 changed lines in total (additions + deletions); (4) exactly one commit; (5) never remove or weaken a validation (`raise`, `assert`, or an `if \u2026 raise` check) \u2014 a value that fails validation is a data/config problem, not a code bug; (6) fix forward with the smallest change; never revert the offending commit.",
+      "model": {
+        "connection_id": "cbb49911-e778-57e6-a1a4-1336c56e081a",
+        "id": "claude-sonnet-5-5",
+        "effort": "low"
+      },
+      "mcp": {
+        "mcpServers": {
+          "github": {
+            "type": "connection",
+            "connection_id": "06b0074d-dcf9-73e7-8000-c79acab63b69",
+            "tools": [
+              "list_commits",
+              "get_commit"
+            ]
+          }
+        }
+      },
+      "inputs": {
+        "fix": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "branch": {
+                "type": "string"
+              },
+              "base_sha": {
+                "type": "string"
+              },
+              "commit_sha": {
+                "type": "string"
+              },
+              "files_changed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "lines_changed": {
+                "type": "integer"
+              },
+              "commit_message": {
+                "type": "string"
+              },
+              "change_summary": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "branch",
+              "base_sha",
+              "commit_sha",
+              "files_changed",
+              "lines_changed",
+              "commit_message",
+              "change_summary",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        },
+        "flow_run_id": {
+          "schema": {
+            "type": "string"
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        }
+      },
+      "outputs": {
+        "passed": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              },
+              "triggered_by": {
+                "type": "string"
+              },
+              "source_commit": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "month",
+              "triggered_by",
+              "source_commit"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "failed": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "violations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "violations",
+              "summary"
+            ]
+          }
+        }
+      },
+      "orchestration": {
+        "output_selection": "exactly_one",
+        "evaluate_when": "all_required_inputs_produced"
+      }
+    },
+    "verify": {
+      "kind": "DeploymentNode",
+      "label": "Run the candidate deployment (pulls autofix/candidate)",
+      "deployment": {
+        "id": "e87e1969-9e0f-4f16-94c0-3a1366232d6d"
+      },
+      "wait": {
+        "for": "child_flow_run",
+        "until": "terminal"
+      },
+      "inputs": {
+        "parameters": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              },
+              "triggered_by": {
+                "type": "string"
+              },
+              "source_commit": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "month",
+              "triggered_by",
+              "source_commit"
+            ],
+            "additionalProperties": false
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        }
+      },
+      "outputs": {
+        "completed": {
+          "schema": {
+            "type": "object"
+          }
+        },
+        "failed": {
+          "schema": {
+            "type": "object"
+          }
+        }
+      },
+      "orchestration": {
+        "output_selection": "exactly_one",
+        "evaluate_when": "all_required_inputs_produced"
+      }
+    },
+    "open_pr": {
+      "kind": "AgentNode",
+      "label": "Open the pull request",
+      "objective": "The fix in `fix` passed review and the candidate run in `verification` completed. Open a pull request on `forester-maker/harborline-pipelines` from `autofix/candidate` into `main` with `create_pull_request`. Title: `autofix: <short root cause>`. Body, in markdown, under these headings: **What failed** (the error, quoted, and the production run link https://app.stg.prefect.dev/account/082ab537-848d-465a-a6ba-9da372bfc4ca/workspace/d70b4af3-5132-4ea1-8384-e9d94c896e69/runs/flow-run/<diagnosis.flow_run_id>); **Root cause** (from `diagnosis`, naming the offending commit sha and message); **Fix** (`fix.change_summary`, files and line count); **Proof** (the candidate run link https://app.stg.prefect.dev/account/082ab537-848d-465a-a6ba-9da372bfc4ca/workspace/d70b4af3-5132-4ea1-8384-e9d94c896e69/runs/flow-run/<the run id found in `verification`>, state Completed); and the line 'Opened by the harborline-code-autofix agentic workflow. Merging needs human approval.' Select `pr_opened` with the PR number, URL, title and the candidate run URL; select `blocked` on error.",
+      "model": {
+        "connection_id": "cbb49911-e778-57e6-a1a4-1336c56e081a",
+        "id": "claude-haiku-5-5",
+        "effort": "low"
+      },
+      "mcp": {
+        "mcpServers": {
+          "github": {
+            "type": "connection",
+            "connection_id": "06b0074d-dcf9-73e7-8000-c79acab63b69",
+            "tools": [
+              "create_pull_request"
+            ]
+          }
+        }
+      },
+      "inputs": {
+        "diagnosis": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "flow_run_id": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "root_cause": {
+                "type": "string"
+              },
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer"
+              },
+              "offending_commit_sha": {
+                "type": "string"
+              },
+              "offending_commit_message": {
+                "type": "string"
+              },
+              "fix_location": {
+                "type": "string",
+                "enum": [
+                  "flows",
+                  "outside_flows"
+                ]
+              },
+              "intended_fix": {
+                "type": "string"
+              },
+              "covering_test": {
+                "type": "string"
+              },
+              "main_head_sha": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "flow_run_id",
+              "error",
+              "root_cause",
+              "file",
+              "line",
+              "offending_commit_sha",
+              "offending_commit_message",
+              "fix_location",
+              "intended_fix",
+              "covering_test",
+              "main_head_sha",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        },
+        "fix": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "branch": {
+                "type": "string"
+              },
+              "base_sha": {
+                "type": "string"
+              },
+              "commit_sha": {
+                "type": "string"
+              },
+              "files_changed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "lines_changed": {
+                "type": "integer"
+              },
+              "commit_message": {
+                "type": "string"
+              },
+              "change_summary": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "branch",
+              "base_sha",
+              "commit_sha",
+              "files_changed",
+              "lines_changed",
+              "commit_message",
+              "change_summary",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        },
+        "verification": {
+          "schema": {
+            "type": "object"
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        }
+      },
+      "outputs": {
+        "pr_opened": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "pr_number": {
+                "type": "integer"
+              },
+              "pr_url": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "candidate_run_url": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "pr_number",
+              "pr_url",
+              "title",
+              "candidate_run_url",
+              "summary"
+            ]
+          }
+        },
+        "blocked": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason",
+              "summary"
+            ]
+          }
+        }
+      },
+      "orchestration": {
+        "output_selection": "exactly_one",
+        "evaluate_when": "all_required_inputs_produced"
+      }
+    },
+    "approve_merge": {
+      "kind": "HumanInputNode",
+      "label": "Reviewer: merge the agent's fix?",
+      "human_input": {
+        "form_schema": {
+          "type": "object",
+          "title": "Merge the autofix pull request?",
+          "description": "The agent diagnosed a code bug, committed a fix to autofix/candidate, an independent check reviewed the diff, and the candidate run passed. Review the PR, then approve to merge it and run production, or reject with notes (the PR stays open for a developer). If nobody answers within 30 minutes, nothing is merged.",
+          "properties": {
+            "decision": {
+              "type": "string",
+              "enum": [
+                "approve_merge",
+                "reject"
+              ],
+              "title": "Decision"
+            },
+            "notes": {
+              "type": "string",
+              "title": "Notes",
+              "description": "Required when rejecting; added to the PR."
+            }
+          },
+          "required": [
+            "decision"
+          ]
+        },
+        "deadline": {
+          "after": "PT30M",
+          "on_expiry": {
+            "output": "no_answer",
+            "value": {
+              "decision": "no_answer",
+              "notes": "No answer within 30 minutes; the PR is left open and not merged."
+            }
+          }
+        }
+      },
+      "inputs": {
+        "pr": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "pr_number": {
+                "type": "integer"
+              },
+              "pr_url": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "candidate_run_url": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "pr_number",
+              "pr_url",
+              "title",
+              "candidate_run_url",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        },
+        "diagnosis": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "flow_run_id": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "root_cause": {
+                "type": "string"
+              },
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer"
+              },
+              "offending_commit_sha": {
+                "type": "string"
+              },
+              "offending_commit_message": {
+                "type": "string"
+              },
+              "fix_location": {
+                "type": "string",
+                "enum": [
+                  "flows",
+                  "outside_flows"
+                ]
+              },
+              "intended_fix": {
+                "type": "string"
+              },
+              "covering_test": {
+                "type": "string"
+              },
+              "main_head_sha": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "flow_run_id",
+              "error",
+              "root_cause",
+              "file",
+              "line",
+              "offending_commit_sha",
+              "offending_commit_message",
+              "fix_location",
+              "intended_fix",
+              "covering_test",
+              "main_head_sha",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        },
+        "fix": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "branch": {
+                "type": "string"
+              },
+              "base_sha": {
+                "type": "string"
+              },
+              "commit_sha": {
+                "type": "string"
+              },
+              "files_changed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "lines_changed": {
+                "type": "integer"
+              },
+              "commit_message": {
+                "type": "string"
+              },
+              "change_summary": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "branch",
+              "base_sha",
+              "commit_sha",
+              "files_changed",
+              "lines_changed",
+              "commit_message",
+              "change_summary",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        }
+      },
+      "outputs": {
+        "approve_merge": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          }
+        },
+        "reject": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          }
+        },
+        "no_answer": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          }
+        }
+      },
+      "orchestration": {
+        "output_selection": "exactly_one",
+        "evaluate_when": "all_required_inputs_produced"
+      }
+    },
+    "merge_pr": {
+      "kind": "AgentNode",
+      "label": "Merge the approved PR",
+      "objective": "The reviewer approved. Merge pull request `pr.pr_number` on `forester-maker/harborline-pipelines` with `merge_pull_request`, method `squash`, keeping the PR title as the commit title. Do nothing else. Select `merged`; its value is exactly the parameters for the production run, and nothing else: `month` = '2026-10', `triggered_by` = 'autofix merge of PR #<pr_number>', `source_commit` = the merge commit sha. Select `blocked` with the error if the merge fails.",
+      "model": {
+        "connection_id": "cbb49911-e778-57e6-a1a4-1336c56e081a",
+        "id": "claude-haiku-5-5",
+        "effort": "low"
+      },
+      "mcp": {
+        "mcpServers": {
+          "github": {
+            "type": "connection",
+            "connection_id": "06b0074d-dcf9-73e7-8000-c79acab63b69",
+            "tools": [
+              "merge_pull_request"
+            ]
+          }
+        }
+      },
+      "inputs": {
+        "pr": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "pr_number": {
+                "type": "integer"
+              },
+              "pr_url": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "candidate_run_url": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "pr_number",
+              "pr_url",
+              "title",
+              "candidate_run_url",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        },
+        "review": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        }
+      },
+      "outputs": {
+        "merged": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              },
+              "triggered_by": {
+                "type": "string"
+              },
+              "source_commit": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "month",
+              "triggered_by",
+              "source_commit"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "blocked": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason",
+              "summary"
+            ]
+          }
+        }
+      },
+      "orchestration": {
+        "output_selection": "exactly_one",
+        "evaluate_when": "all_required_inputs_produced"
+      }
+    },
+    "run_production": {
+      "kind": "DeploymentNode",
+      "label": "Run production on the merged main",
+      "deployment": {
+        "id": "70f5029c-a5ec-49db-96cf-b8bd705ac1fc"
+      },
+      "wait": {
+        "for": "child_flow_run",
+        "until": "terminal"
+      },
+      "inputs": {
+        "parameters": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              },
+              "triggered_by": {
+                "type": "string"
+              },
+              "source_commit": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "month",
+              "triggered_by",
+              "source_commit"
+            ],
+            "additionalProperties": false
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        }
+      },
+      "outputs": {
+        "completed": {
+          "schema": {
+            "type": "object"
+          }
+        },
+        "failed": {
+          "schema": {
+            "type": "object"
+          }
+        }
+      },
+      "orchestration": {
+        "output_selection": "exactly_one",
+        "evaluate_when": "all_required_inputs_produced"
+      }
+    },
+    "report": {
+      "kind": "AgentNode",
+      "label": "Report the outcome to the team",
+      "objective": "Post exactly one message about how this autofix run ended. `outcome` maps the edge that fired to its value; the edge id names the ending (for example `ending.run_production.completed`). Map it to `ending`: run_production.completed \u2192 fixed_and_deployed; run_production.failed \u2192 fixed_but_production_failed; verify.failed \u2192 candidate_failed; check_fix.failed \u2192 fix_rejected_by_check; write_fix.fix_outside_allowed_paths \u2192 fix_outside_allowed_paths; approve_merge.reject \u2192 rejected_by_reviewer; approve_merge.no_answer \u2192 awaiting_review; diagnose.not_a_code_bug \u2192 not_a_code_bug; any `.blocked` \u2192 blocked. Call `post_message` to `#data-platform-alerts` with at most 6 lines: the ending in plain words, the failed run (https://app.stg.prefect.dev/account/082ab537-848d-465a-a6ba-9da372bfc4ca/workspace/d70b4af3-5132-4ea1-8384-e9d94c896e69/runs/flow-run/<flow_run_id>), the root cause or failure class, and the fix commit, PR link, and candidate/production run links where they exist. For fixed_but_production_failed start with 'HIGH PRIORITY: production still failing after merge' and name the merge commit (`merged.source_commit`). For rejected_by_reviewer also call `add_issue_comment` on the PR (issue_number = PR number) with the reviewer's notes. For awaiting_review say 'fix proven, PR waiting for review'. Never claim a fix that didn't happen. Select `reported` with the ending, the message text, and a one-sentence summary.",
+      "model": {
+        "connection_id": "cbb49911-e778-57e6-a1a4-1336c56e081a",
+        "id": "claude-haiku-5-5",
+        "effort": "low"
+      },
+      "mcp": {
+        "mcpServers": {
+          "ops": {
+            "type": "connection",
+            "connection_id": "06afcb7c-21a4-7c08-8000-754448c55a71",
+            "tools": [
+              "post_message"
+            ]
+          },
+          "github": {
+            "type": "connection",
+            "connection_id": "06b0074d-dcf9-73e7-8000-c79acab63b69",
+            "tools": [
+              "add_issue_comment"
+            ]
+          }
+        }
+      },
+      "inputs": {
+        "outcome": {
+          "schema": {
+            "type": "object"
+          },
+          "expects": {
+            "cardinality": "one_or_more",
+            "shape": "source_map",
+            "key_by": "edge"
+          }
+        },
+        "flow_run_id": {
+          "schema": {
+            "type": "string"
+          },
+          "expects": {
+            "cardinality": "exactly_one",
+            "shape": "value"
+          }
+        },
+        "diagnosis": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "flow_run_id": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "root_cause": {
+                "type": "string"
+              },
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer"
+              },
+              "offending_commit_sha": {
+                "type": "string"
+              },
+              "offending_commit_message": {
+                "type": "string"
+              },
+              "fix_location": {
+                "type": "string",
+                "enum": [
+                  "flows",
+                  "outside_flows"
+                ]
+              },
+              "intended_fix": {
+                "type": "string"
+              },
+              "covering_test": {
+                "type": "string"
+              },
+              "main_head_sha": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "flow_run_id",
+              "error",
+              "root_cause",
+              "file",
+              "line",
+              "offending_commit_sha",
+              "offending_commit_message",
+              "fix_location",
+              "intended_fix",
+              "covering_test",
+              "main_head_sha",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "zero_or_one",
+            "shape": "value"
+          }
+        },
+        "fix": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "branch": {
+                "type": "string"
+              },
+              "base_sha": {
+                "type": "string"
+              },
+              "commit_sha": {
+                "type": "string"
+              },
+              "files_changed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "lines_changed": {
+                "type": "integer"
+              },
+              "commit_message": {
+                "type": "string"
+              },
+              "change_summary": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "branch",
+              "base_sha",
+              "commit_sha",
+              "files_changed",
+              "lines_changed",
+              "commit_message",
+              "change_summary",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "zero_or_one",
+            "shape": "value"
+          }
+        },
+        "pr": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "pr_number": {
+                "type": "integer"
+              },
+              "pr_url": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "candidate_run_url": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "pr_number",
+              "pr_url",
+              "title",
+              "candidate_run_url",
+              "summary"
+            ]
+          },
+          "expects": {
+            "cardinality": "zero_or_one",
+            "shape": "value"
+          }
+        },
+        "merged": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              },
+              "triggered_by": {
+                "type": "string"
+              },
+              "source_commit": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "month",
+              "triggered_by",
+              "source_commit"
+            ],
+            "additionalProperties": false
+          },
+          "expects": {
+            "cardinality": "zero_or_one",
+            "shape": "value"
+          }
+        }
+      },
+      "outputs": {
+        "reported": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "ending": {
+                "type": "string",
+                "enum": [
+                  "fixed_and_deployed",
+                  "fixed_but_production_failed",
+                  "candidate_failed",
+                  "fix_rejected_by_check",
+                  "fix_outside_allowed_paths",
+                  "rejected_by_reviewer",
+                  "awaiting_review",
+                  "not_a_code_bug",
+                  "blocked"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "ending",
+              "message",
+              "summary"
+            ]
+          }
+        }
+      },
+      "orchestration": {
+        "output_selection": "exactly_one",
+        "evaluate_when": "all_reachable_terminal"
+      }
+    }
+  },
+  "edges": [
+    {
+      "id": "flow_run_id-to-inspect_failure.flow_run_id",
+      "from": {
+        "type": "plan_input",
+        "input": "flow_run_id"
+      },
+      "to": {
+        "node": "inspect_failure",
+        "input": "flow_run_id"
+      }
+    },
+    {
+      "id": "flow_name-to-read_code.flow_name",
+      "from": {
+        "type": "plan_input",
+        "input": "flow_name"
+      },
+      "to": {
+        "node": "read_code",
+        "input": "flow_name"
+      }
+    },
+    {
+      "id": "flow_run_id-to-report.flow_run_id",
+      "from": {
+        "type": "plan_input",
+        "input": "flow_run_id"
+      },
+      "to": {
+        "node": "report",
+        "input": "flow_run_id"
+      }
+    },
+    {
+      "id": "inspect_failure.failure_read-to-diagnose.failure",
+      "from": {
+        "type": "node_output",
+        "node": "inspect_failure",
+        "output": "failure_read"
+      },
+      "to": {
+        "node": "diagnose",
+        "input": "failure"
+      }
+    },
+    {
+      "id": "read_code.code_read-to-diagnose.code",
+      "from": {
+        "type": "node_output",
+        "node": "read_code",
+        "output": "code_read"
+      },
+      "to": {
+        "node": "diagnose",
+        "input": "code"
+      }
+    },
+    {
+      "id": "diagnose.code_bug-to-write_fix.diagnosis",
+      "from": {
+        "type": "node_output",
+        "node": "diagnose",
+        "output": "code_bug"
+      },
+      "to": {
+        "node": "write_fix",
+        "input": "diagnosis"
+      }
+    },
+    {
+      "id": "write_fix.fix_committed-to-check_fix.fix",
+      "from": {
+        "type": "node_output",
+        "node": "write_fix",
+        "output": "fix_committed"
+      },
+      "to": {
+        "node": "check_fix",
+        "input": "fix"
+      }
+    },
+    {
+      "id": "flow_run_id-to-check_fix.flow_run_id",
+      "from": {
+        "type": "plan_input",
+        "input": "flow_run_id"
+      },
+      "to": {
+        "node": "check_fix",
+        "input": "flow_run_id"
+      }
+    },
+    {
+      "id": "check_fix.passed-to-verify.parameters",
+      "from": {
+        "type": "node_output",
+        "node": "check_fix",
+        "output": "passed"
+      },
+      "to": {
+        "node": "verify",
+        "input": "parameters"
+      }
+    },
+    {
+      "id": "diagnose.code_bug-to-open_pr.diagnosis",
+      "from": {
+        "type": "node_output",
+        "node": "diagnose",
+        "output": "code_bug"
+      },
+      "to": {
+        "node": "open_pr",
+        "input": "diagnosis"
+      }
+    },
+    {
+      "id": "write_fix.fix_committed-to-open_pr.fix",
+      "from": {
+        "type": "node_output",
+        "node": "write_fix",
+        "output": "fix_committed"
+      },
+      "to": {
+        "node": "open_pr",
+        "input": "fix"
+      }
+    },
+    {
+      "id": "verify.completed-to-open_pr.verification",
+      "from": {
+        "type": "node_output",
+        "node": "verify",
+        "output": "completed"
+      },
+      "to": {
+        "node": "open_pr",
+        "input": "verification"
+      }
+    },
+    {
+      "id": "open_pr.pr_opened-to-approve_merge.pr",
+      "from": {
+        "type": "node_output",
+        "node": "open_pr",
+        "output": "pr_opened"
+      },
+      "to": {
+        "node": "approve_merge",
+        "input": "pr"
+      }
+    },
+    {
+      "id": "diagnose.code_bug-to-approve_merge.diagnosis",
+      "from": {
+        "type": "node_output",
+        "node": "diagnose",
+        "output": "code_bug"
+      },
+      "to": {
+        "node": "approve_merge",
+        "input": "diagnosis"
+      }
+    },
+    {
+      "id": "write_fix.fix_committed-to-approve_merge.fix",
+      "from": {
+        "type": "node_output",
+        "node": "write_fix",
+        "output": "fix_committed"
+      },
+      "to": {
+        "node": "approve_merge",
+        "input": "fix"
+      }
+    },
+    {
+      "id": "open_pr.pr_opened-to-merge_pr.pr",
+      "from": {
+        "type": "node_output",
+        "node": "open_pr",
+        "output": "pr_opened"
+      },
+      "to": {
+        "node": "merge_pr",
+        "input": "pr"
+      }
+    },
+    {
+      "id": "approve_merge.approve_merge-to-merge_pr.review",
+      "from": {
+        "type": "node_output",
+        "node": "approve_merge",
+        "output": "approve_merge"
+      },
+      "to": {
+        "node": "merge_pr",
+        "input": "review"
+      }
+    },
+    {
+      "id": "merge_pr.merged-to-run_production.parameters",
+      "from": {
+        "type": "node_output",
+        "node": "merge_pr",
+        "output": "merged"
+      },
+      "to": {
+        "node": "run_production",
+        "input": "parameters"
+      }
+    },
+    {
+      "id": "merge_pr.merged-to-report.merged",
+      "from": {
+        "type": "node_output",
+        "node": "merge_pr",
+        "output": "merged"
+      },
+      "to": {
+        "node": "report",
+        "input": "merged"
+      }
+    },
+    {
+      "id": "diagnose.code_bug-to-report.diagnosis",
+      "from": {
+        "type": "node_output",
+        "node": "diagnose",
+        "output": "code_bug"
+      },
+      "to": {
+        "node": "report",
+        "input": "diagnosis"
+      }
+    },
+    {
+      "id": "write_fix.fix_committed-to-report.fix",
+      "from": {
+        "type": "node_output",
+        "node": "write_fix",
+        "output": "fix_committed"
+      },
+      "to": {
+        "node": "report",
+        "input": "fix"
+      }
+    },
+    {
+      "id": "open_pr.pr_opened-to-report.pr",
+      "from": {
+        "type": "node_output",
+        "node": "open_pr",
+        "output": "pr_opened"
+      },
+      "to": {
+        "node": "report",
+        "input": "pr"
+      }
+    },
+    {
+      "id": "ending.inspect_failure.blocked",
+      "from": {
+        "type": "node_output",
+        "node": "inspect_failure",
+        "output": "blocked"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.read_code.blocked",
+      "from": {
+        "type": "node_output",
+        "node": "read_code",
+        "output": "blocked"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.diagnose.not_a_code_bug",
+      "from": {
+        "type": "node_output",
+        "node": "diagnose",
+        "output": "not_a_code_bug"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.diagnose.blocked",
+      "from": {
+        "type": "node_output",
+        "node": "diagnose",
+        "output": "blocked"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.write_fix.fix_outside_allowed_paths",
+      "from": {
+        "type": "node_output",
+        "node": "write_fix",
+        "output": "fix_outside_allowed_paths"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.write_fix.blocked",
+      "from": {
+        "type": "node_output",
+        "node": "write_fix",
+        "output": "blocked"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.check_fix.failed",
+      "from": {
+        "type": "node_output",
+        "node": "check_fix",
+        "output": "failed"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.verify.failed",
+      "from": {
+        "type": "node_output",
+        "node": "verify",
+        "output": "failed"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.open_pr.blocked",
+      "from": {
+        "type": "node_output",
+        "node": "open_pr",
+        "output": "blocked"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.approve_merge.reject",
+      "from": {
+        "type": "node_output",
+        "node": "approve_merge",
+        "output": "reject"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.approve_merge.no_answer",
+      "from": {
+        "type": "node_output",
+        "node": "approve_merge",
+        "output": "no_answer"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.merge_pr.blocked",
+      "from": {
+        "type": "node_output",
+        "node": "merge_pr",
+        "output": "blocked"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.run_production.completed",
+      "from": {
+        "type": "node_output",
+        "node": "run_production",
+        "output": "completed"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    },
+    {
+      "id": "ending.run_production.failed",
+      "from": {
+        "type": "node_output",
+        "node": "run_production",
+        "output": "failed"
+      },
+      "to": {
+        "node": "report",
+        "input": "outcome"
+      }
+    }
+  ],
+  "outputs": {
+    "result": {
+      "fields": {
+        "result": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "ending": {
+                "type": "string",
+                "enum": [
+                  "fixed_and_deployed",
+                  "fixed_but_production_failed",
+                  "candidate_failed",
+                  "fix_rejected_by_check",
+                  "fix_outside_allowed_paths",
+                  "rejected_by_reviewer",
+                  "awaiting_review",
+                  "not_a_code_bug",
+                  "blocked"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "ending",
+              "message",
+              "summary"
+            ]
+          },
+          "source": {
+            "type": "node_output",
+            "node": "report",
+            "output": "reported"
+          }
+        }
+      },
+      "required": [
+        "result"
+      ]
+    },
+    "diagnosis": {
+      "fields": {
+        "diagnosis": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "flow_run_id": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "root_cause": {
+                "type": "string"
+              },
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer"
+              },
+              "offending_commit_sha": {
+                "type": "string"
+              },
+              "offending_commit_message": {
+                "type": "string"
+              },
+              "fix_location": {
+                "type": "string",
+                "enum": [
+                  "flows",
+                  "outside_flows"
+                ]
+              },
+              "intended_fix": {
+                "type": "string"
+              },
+              "covering_test": {
+                "type": "string"
+              },
+              "main_head_sha": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "flow_run_id",
+              "error",
+              "root_cause",
+              "file",
+              "line",
+              "offending_commit_sha",
+              "offending_commit_message",
+              "fix_location",
+              "intended_fix",
+              "covering_test",
+              "main_head_sha",
+              "summary"
+            ]
+          },
+          "source": {
+            "type": "node_output",
+            "node": "diagnose",
+            "output": "code_bug"
+          }
+        }
+      }
+    },
+    "pull_request": {
+      "fields": {
+        "pull_request": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "pr_number": {
+                "type": "integer"
+              },
+              "pr_url": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "candidate_run_url": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "pr_number",
+              "pr_url",
+              "title",
+              "candidate_run_url",
+              "summary"
+            ]
+          },
+          "source": {
+            "type": "node_output",
+            "node": "open_pr",
+            "output": "pr_opened"
+          }
+        }
+      }
+    }
+  }
+}
