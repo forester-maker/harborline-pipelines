@@ -1,0 +1,41 @@
+# Deployments for the Harborline pipelines demo.
+#   uv run prefect deploy --all
+# Each run clones this repo over SSH on the worker (your GitHub key).
+# Start the worker with PREFECT_CLOUD_API_URL set when using staging (see README).
+
+name: harborline-pipelines
+prefect-version: 3.7.6
+
+deployments:
+  - name: production
+    description: Carrier invoicing from `main`. The autofix automation watches this deployment only.
+    entrypoint: flows/invoicing.py:carrier_invoicing
+    tags: [demo, harborline, production]
+    work_pool:
+      name: harborline-local
+    pull:
+      - prefect.deployments.steps.git_clone:
+          repository: git@github.com:forester-maker/harborline-pipelines.git
+          branch: main
+
+  - name: candidate
+    description: Carrier invoicing from `autofix/candidate`, the autofix agent's proposed fix. Never watched by automations.
+    entrypoint: flows/invoicing.py:carrier_invoicing
+    tags: [demo, harborline, candidate]
+    work_pool:
+      name: harborline-local
+    pull:
+      - prefect.deployments.steps.git_clone:
+          repository: git@github.com:forester-maker/harborline-pipelines.git
+          branch: autofix/candidate
+
+  - name: on-failure
+    description: Starts the harborline-code-autofix execution plan for one failed production run.
+    entrypoint: workflows/dispatch_autofix.py:dispatch_autofix
+    tags: [demo, harborline]
+    work_pool:
+      name: harborline-local
+    pull:
+      - prefect.deployments.steps.git_clone:
+          repository: git@github.com:forester-maker/harborline-pipelines.git
+          branch: main
