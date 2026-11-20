@@ -1,7 +1,8 @@
 # Deployments for the Harborline pipelines demo.
 #   uv run prefect deploy --all
-# Each run clones this repo over SSH on the worker (your GitHub key).
-# Start the worker with PREFECT_CLOUD_API_URL set when using staging (see README).
+# Runs execute on the Prefect-managed pool `harborline-managed` and clone this
+# private repo over HTTPS with a READ-ONLY fine-grained token stored in the
+# Prefect Secret block `harborline-github-read`.
 
 name: harborline-pipelines
 prefect-version: 3.7.6
@@ -12,10 +13,13 @@ deployments:
     entrypoint: flows/invoicing.py:carrier_invoicing
     tags: [demo, harborline, production]
     work_pool:
-      name: harborline-local
+      name: harborline-managed
+      job_variables:
+        pip_packages: ["pyyaml>=6"]
     pull:
       - prefect.deployments.steps.git_clone:
-          repository: git@github.com:forester-maker/harborline-pipelines.git
+          repository: https://github.com/forester-maker/harborline-pipelines.git
+          access_token: "{{ prefect.blocks.secret.harborline-github-read }}"
           branch: main
 
   - name: candidate
@@ -23,10 +27,13 @@ deployments:
     entrypoint: flows/invoicing.py:carrier_invoicing
     tags: [demo, harborline, candidate]
     work_pool:
-      name: harborline-local
+      name: harborline-managed
+      job_variables:
+        pip_packages: ["pyyaml>=6"]
     pull:
       - prefect.deployments.steps.git_clone:
-          repository: git@github.com:forester-maker/harborline-pipelines.git
+          repository: https://github.com/forester-maker/harborline-pipelines.git
+          access_token: "{{ prefect.blocks.secret.harborline-github-read }}"
           branch: autofix/candidate
 
   - name: on-failure
@@ -34,8 +41,11 @@ deployments:
     entrypoint: workflows/dispatch_autofix.py:dispatch_autofix
     tags: [demo, harborline]
     work_pool:
-      name: harborline-local
+      name: harborline-managed
+      job_variables:
+        pip_packages: ["pyyaml>=6"]
     pull:
       - prefect.deployments.steps.git_clone:
-          repository: git@github.com:forester-maker/harborline-pipelines.git
+          repository: https://github.com/forester-maker/harborline-pipelines.git
+          access_token: "{{ prefect.blocks.secret.harborline-github-read }}"
           branch: main
