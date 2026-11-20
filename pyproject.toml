@@ -1,0 +1,16 @@
+[project]
+name = "harborline-pipelines"
+version = "0.1.0"
+description = "Harborline Logistics data pipelines (demo): carrier invoicing + autofix agentic workflow"
+requires-python = ">=3.12"
+dependencies = [
+    "prefect==3.7.6",
+    "pyyaml>=6",
+    "fastmcp>=4.2.1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
