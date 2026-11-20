@@ -100,7 +100,7 @@ Measured on 2026-11-20:
 | | Trigger | Ending | Notes |
 |---|---|---|---|
 | A | `rate_field`, approve | `fixed_and_deployed` | PR #1, merge `6f9d023`, production completed |
-| B | `zero_shipments`, reject | see below | |
+| B | `zero_shipments`, reject | `rejected_by_reviewer` | PR #2 (2-line guard restore) left unmerged; reviewer notes posted as a PR comment |
 | C | `upstream_outage` | `not_a_code_bug` | never reached `write_fix` |
 | D | `bad_config` | `fix_outside_allowed_paths` | refused to edit config or weaken validation; no branch |
 
