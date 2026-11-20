@@ -1,8 +1,8 @@
-"""Put the pipeline code back to the `clean` tag and remove the agent's branch.
+"""Put the pipeline code back to the `baseline` tag and remove the agent's branch.
 
     uv run python scripts/reset_code.py
 
-- Restores flows/, config/, data/ and tests/ from the `clean` tag as a NEW
+- Restores flows/, config/, data/ and tests/ from the `baseline` tag as a NEW
   commit on main (history is never rewritten; no force-push).
 - Deletes the remote `autofix/candidate` branch, which also closes its PR.
 - Sets the ops Variable back to "ok".
@@ -21,7 +21,7 @@ BRANCH = "autofix/candidate"
 
 def main() -> None:
     sync_main()
-    git("checkout", "clean", "--", *PIPELINE_PATHS)
+    git("checkout", "baseline", "--", *PIPELINE_PATHS)
     if git("status", "--porcelain", "--", *PIPELINE_PATHS):
         git("add", "-A", *PIPELINE_PATHS)
         git("commit", "-m", "demo: reset pipeline code to the clean baseline")

@@ -134,8 +134,14 @@ def publish(lines: list[dict], month: str) -> float:
 
 
 @flow(name="harborline-carrier-invoicing")
-def carrier_invoicing(month: str = "2026-10") -> float:
-    """Monthly carrier invoices for Harborline finance."""
+def carrier_invoicing(month: str = "2026-10", triggered_by: str = "schedule", source_commit: str = "") -> float:
+    """Monthly carrier invoices for Harborline finance.
+
+    `triggered_by` and `source_commit` are provenance only (who started this run and
+    which commit it is meant to test); they don't change the computation.
+    """
+    if triggered_by != "schedule" or source_commit:
+        get_run_logger().info("Triggered by %s (commit %s)", triggered_by, source_commit or "n/a")
     scans, rates = load_inputs()
     check_rates(rates)
     lines = build_invoices(scans, rates, month)
