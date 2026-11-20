@@ -73,7 +73,7 @@ def compute_invoices(scans: list[dict], rates: dict[str, dict], month: str) -> l
         count = len(shipments)
         total_kg = round(sum(s["weight_kg"] for s in shipments), 2)
         amount = round(total_kg * float(rate["rate_per_kg"]) + count * float(rate["fee_per_shipment"]), 2)
-        avg_cost = round(amount / count, 2)
+        avg_cost = round(amount / count, 2) if count else 0.0
         lines.append(
             {
                 "carrier": carrier,

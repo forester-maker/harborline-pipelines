@@ -9,6 +9,3 @@ carriers:
   coastal:
     rate_per_kg: 0.51
     fee_per_shipment: 2.75
-  northline:
-    rate_per_kg: 0.47
-    fee_per_shipment: 3.10
