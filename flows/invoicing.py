@@ -50,10 +50,15 @@ def load_scans(path: Path = SCANS_PATH) -> list[dict]:
     return rows
 
 
+def _per_kg(rate: dict) -> float:
+    """Per-kg rate: `rate_per_kilo` (2027 schema), falling back to legacy `rate_per_kg`."""
+    return float(rate["rate_per_kilo"] if "rate_per_kilo" in rate else rate["rate_per_kg"])
+
+
 def validate_rates(rates: dict[str, dict]) -> None:
     """Every carrier needs a positive per-kg rate and a non-negative per-shipment fee."""
     for carrier, rate in rates.items():
-        per_kg = float(rate["rate_per_kg"])
+        per_kg = _per_kg(rate)
         fee = float(rate["fee_per_shipment"])
         if per_kg <= 0:
             raise ValueError(f"rate_per_kg for {carrier} must be positive, got {per_kg}")
@@ -72,7 +77,7 @@ def compute_invoices(scans: list[dict], rates: dict[str, dict], month: str) -> l
         ]
         count = len(shipments)
         total_kg = round(sum(s["weight_kg"] for s in shipments), 2)
-        amount = round(total_kg * float(rate["rate_per_kg"]) + count * float(rate["fee_per_shipment"]), 2)
+        amount = round(total_kg * _per_kg(rate) + count * float(rate["fee_per_shipment"]), 2)
         avg_cost = round(amount / count, 2) if count else 0.0
         lines.append(
             {
