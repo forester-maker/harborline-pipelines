@@ -29,9 +29,16 @@ DATE_FORMAT = "%m/%d/%Y"
 
 
 def load_rates(path: Path = RATES_PATH) -> dict[str, dict]:
-    """Carrier -> {rate_per_kg, fee_per_shipment} from the rates file."""
+    """Carrier -> {rate_per_kg, fee_per_shipment} from the rates file.
+
+    Accepts the 2027 contract key `rate_per_kilo` and maps it to `rate_per_kg`.
+    """
     with open(path) as f:
-        return yaml.safe_load(f)["carriers"]
+        carriers = yaml.safe_load(f)["carriers"]
+    for rate in carriers.values():
+        if "rate_per_kilo" in rate:
+            rate["rate_per_kg"] = rate.pop("rate_per_kilo")
+    return carriers
 
 
 def load_scans(path: Path = SCANS_PATH) -> list[dict]:
