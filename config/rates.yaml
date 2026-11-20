@@ -4,7 +4,7 @@ carriers:
     rate_per_kg: 0.42
     fee_per_shipment: 3.50
   ridgeway:
-    rate_per_kg: -0.38
+    rate_per_kg: 0.38
     fee_per_shipment: 4.25
   coastal:
     rate_per_kg: 0.51
